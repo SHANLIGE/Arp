@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Arp</title>
+  <link rel="stylesheet" href="/static/styles.css">
+ 
+</head>
+<body>
+  <div class="top-bar" onmousedown="startDrag(event)">
+    <div class="logo"><img src="/static/Logo__negativo.png" alt="logo" width="70"></div>
+    <div class="window-controls" id="controls">
+      <div onclick="minimizarVentana()" class="minimizar">─</div>
+      <div onclick="maximizarVentana()" class="modoventana">▭</div>
+      <div onclick="cerrarVentana()" class="cerrar">✕</div>
+    </div>
+  </div>
+
+  <div class="window">
+    <form method="POST" action="/" enctype="multipart/form-data" id="upload-form">
+      <input type="file" name="archivo" id="archivo" hidden required>
+
+      <button class="upload-btn1" type="button" onclick="document.getElementById('archivo').click()" id="nombre-archivo">Subir archivo</button>
+      <div class="eliminar_archivo">
+       <button type="button" id="remove-file-btn" class="quitar_archivo" hidden onclick="removeFile()">✕ Eliminar archivo</button>
+      </div>
+       <p style="margin-top: 30px;">Seleccione la hoja del Excel</p>
+        <select name="hoja" required id="hoja-select" style="padding: 10px; font-size: 16px;">
+          <option value="" disabled selected>Seleccione una hoja</option>
+        </select>
+
+      <p style="margin-top: 30px;">Seleccione el formato de salida</p>
+      <div class="format-options">
+        <label class="format-option">
+          <input type="radio" name="formato" value="Word" hidden required>
+          <img src="/static/Logo__word.png" alt="Word" width="100"><br>
+        </label>
+
+
+        <label class="format-option">
+          <input type="radio" name="formato" value="PDF" hidden required>
+          <img src="/static/Logo__pdf.png" alt="PDF" width="100"><br>
+        </label>
+
+      </div>
+      <div class="boton">
+       <button class="upload-btn" id="submit" type="submit" style="margin-top: 40px;">→</button>
+        </div>
+        <div id="progreso-contenedor" style="display: none; margin-top: 20px;">
+
+      <div id="barra-progreso" style="width: 0%; height: 8px; background: #e80c06; transition: width 0.4s;"></div>
+      </div>
+
+    </form>
+    
+ 
+    
+
+
+    <div class="footer">
+      <p>Arp Verisón Beta 1.0.2 / Derechos reservados</p>
+    </div>
+
+  </div>
+
+
+
+
+
+
+  <script>
+  
+  const submit = document.getElementById("submit");
+  const barra = document.getElementById("barra-progreso");
+  const contenedor = document.getElementById("progreso-contenedor");
+
+  submit.addEventListener("click", () => {
+    contenedor.style.display = "block";
+    barra.style.width = "0%";
+
+    let progreso = 0;
+    const intervalo = setInterval(() => {
+      if (progreso >= 95) {
+        clearInterval(intervalo);
+        return;
+      }
+      progreso += Math.random() * 10;
+      barra.style.width = progreso + "%";
+    }, 300);
+  });
+  
+  const fileInput = document.getElementById('archivo');
+  const uploadLabel = document.getElementById('nombre-archivo');
+  const removeFileBtn = document.getElementById('remove-file-btn');
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+      const file = fileInput.files[0];
+      uploadLabel.textContent = `📂 ${file.name}`;
+      removeFileBtn.style.display = 'inline-block';
+    } else {
+      uploadLabel.textContent = 'Subir archivo';
+      removeFileBtn.style.display = 'none';
+    }
+  });
+
+  function removeFile() {
+    fileInput.value = ''; 
+    uploadLabel.textContent = 'Subir archivo'; 
+    removeFileBtn.style.display = 'none';
+  }
+
+    document.getElementById('archivo').addEventListener('change', function () {
+    const nombre = this.files[0]?.name || 'Subir archivo';
+    document.getElementById('nombre-archivo').textContent = nombre;
+    });
+ 
+    // Click para activar radio
+    document.querySelectorAll('.format-option').forEach(el => {
+      el.addEventListener('click', () => {
+        el.querySelector('input[type="radio"]').checked = true;
+      });
+    });
+
+    // Auto enviar formulario cuando se seleccione archivo
+    document.getElementById('submit').addEventListener('click', () => {
+      const form = document.getElementById('upload-form');
+      const radios = form.querySelectorAll('input[type="radio"]');
+      let checked = false;
+      radios.forEach(r => { if (r.checked) checked = true; });
+
+      if (!checked) {
+        alert('Selecciona un formato de salida (Word o PDF) antes de subir el archivo.');
+        return;
+      }
+
+      form.submit();
+    });
+
+
+
+
+function minimizarVentana() {
+  window.pywebview.api.minimize();
+}
+
+function maximizarVentana() {
+  window.pywebview.api.toggle_maximize();
+}
+
+function cerrarVentana() {
+  window.pywebview.api.close();
+}
+
+// Mover la ventana
+let isDragging = false;
+let startX, startY;
+
+function startDrag(e) {
+  isDragging = true;
+  startX = e.screenX;
+  startY = e.screenY;
+  document.addEventListener('mousemove', doDrag);
+  document.addEventListener('mouseup', stopDrag);
+}
+
+function doDrag(e) {
+  if (!isDragging) return;
+  const dx = e.screenX - startX;
+  const dy = e.screenY - startY;
+  startX = e.screenX;
+  startY = e.screenY;
+  window.pywebview.api.move(dx, dy);
+}
+
+function stopDrag() {
+  isDragging = false;
+  document.removeEventListener('mousemove', doDrag);
+  document.removeEventListener('mouseup', stopDrag);
+}
+
+
+
+
+  document.getElementById('archivo').addEventListener('change', async () => {
+    const archivoInput = document.getElementById('archivo');
+    const formData = new FormData();
+    formData.append('archivo', archivoInput.files[0]);
+
+    const res = await fetch('/get_sheets', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+    const select = document.getElementById('hoja-select');
+    select.innerHTML = '<option value="" disabled selected>Seleccione una hoja</option>';
+
+    data.sheets.forEach(sheet => {
+      const option = document.createElement('option');
+      option.value = sheet;
+      option.textContent = sheet;
+      select.appendChild(option);
+    });
+  });
+
+   document.querySelectorAll('.format-option').forEach(el => {
+    el.addEventListener('click', () => {
+      el.querySelector('input[type="radio"]').checked = true;
+    });
+  });
+
+  // Cargar hojas del Excel
+  document.getElementById('archivo').addEventListener('change', async () => {
+    const archivoInput = document.getElementById('archivo');
+    const formData = new FormData();
+    formData.append('archivo', archivoInput.files[0]);
+
+    const res = await fetch('/get_sheets', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await res.json();
+    const select = document.getElementById('hoja-select');
+    select.innerHTML = '<option value="" disabled selected>Seleccione una hoja</option>';
+
+    data.sheets.forEach(sheet => {
+      const option = document.createElement('option');
+      option.value = sheet;
+      option.textContent = sheet;
+      select.appendChild(option);
+    });
+  });
+
+
+
+
+
+    </script>
+</body>
